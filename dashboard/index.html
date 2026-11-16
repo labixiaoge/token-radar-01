@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Launch Radar — Protocols Without a Token, Ranked</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>Token Launch Radar <span>— no token yet</span></h1>
+  <p class="sub">Every protocol in the sealed snapshot of 2026-11-14 that records <b>no token</b>
+    (no market cap, no CoinGecko id, no symbol), ranked by implied launch value:
+    <b>TVL &times; category median market-cap / TVL</b>, clamped to [0.05, 2.0].
+    The board covers all 40 watchlist protocols (TVL of at least $50M) plus the
+    160 largest pre-token protocols below the floor. Click a row for the detail
+    view and a farming plan.</p>
+  <div class="stats">
+    <div class="stat"><div class="label">Protocols on the board</div><div class="value" id="stat-count">–</div></div>
+    <div class="stat"><div class="label">Combined TVL</div><div class="value" id="stat-tvl">–</div></div>
+    <div class="stat"><div class="label">Combined implied value</div><div class="value" id="stat-implied">–</div></div>
+    <div class="stat"><div class="label">Top implied value</div><div class="value" id="stat-top">–</div></div>
+  </div>
+  <p class="snapline" id="snapline"></p>
+</header>
+
+<div class="controls">
+  <input type="search" id="search" placeholder="Search name or category…" aria-label="Search">
+  <select id="category" aria-label="Category filter"><option value="">All categories</option></select>
+  <select id="chain" aria-label="Chain filter"><option value="">All chains</option></select>
+  <button class="reset" id="reset">Reset filters</button>
+  <span class="count" id="count"></span>
+</div>
+
+<main>
+  <table>
+    <thead>
+      <tr>
+        <th data-key="rank" class="num">#</th>
+        <th data-key="name">Protocol</th>
+        <th data-key="category">Category</th>
+        <th data-key="tvl" class="num">TVL</th>
+        <th data-key="impliedValue" class="num">Implied value</th>
+        <th data-key="chains">Chains</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">No protocols match these filters.</div>
+  <div class="method">
+    <b>How the implied value is estimated.</b>
+    For each category we measured the median market-cap / TVL ratio across the protocols in that
+    category that already have a token (for example Dexs ≈ 0.35, Lending ≈ 0.13, Derivatives ≈ 1.60).
+    A protocol's implied launch value is its TVL times that ratio, clamped to [0.05, 2.0];
+    categories with no measured ratio use the global median of 0.308. Prediction Market's raw
+    ratio (7.36) is clamped to 2.0. The snapshot is sealed: as of 2026-11-14 it holds 758
+    protocols at or above $5M TVL. This is a rough, comparable yardstick — not a price forecast.
+    A launch is never guaranteed; farm at your own risk and never deposit more than you can lose.
+  </div>
+</main>
+
+<div class="overlay" id="overlay"></div>
+<aside class="detail" id="detail" aria-label="Protocol detail"></aside>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
