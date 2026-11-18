@@ -1,15 +1,15 @@
 *{box-sizing:border-box}
 body{margin:0;background:#0d1117;color:#e6edf3;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
-.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
 h1{font-size:28px;margin:28px 0 8px;letter-spacing:-.02em}
-.lede{color:#8b949e;margin:0 0 20px;max-width:860px}
+.lede{color:#8b949e;margin:0 0 20px;max-width:900px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
 .stat{background:#161b22;border:1px solid #2b3442;border-radius:10px;padding:12px 14px}
 .stat-label{display:block;font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em}
 .stat-value{display:block;font-size:20px;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .snapline{color:#8b949e;margin:0 0 18px}
 .snapline strong{color:#e6edf3}
-.filters{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;max-width:1080px;padding:12px 20px;background:#0d1117;border-top:1px solid #2b3442;border-bottom:1px solid #2b3442}
+.filters{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;max-width:1180px;padding:12px 20px;background:#0d1117;border-top:1px solid #2b3442;border-bottom:1px solid #2b3442}
 .filters input,.filters select{background:#161b22;border:1px solid #2b3442;color:#e6edf3;border-radius:8px;padding:8px 10px;font-size:14px}
 .filters input{flex:1 1 260px;min-width:160px}
 .filters select{flex:0 1 180px}
@@ -26,19 +26,21 @@ th.sorted-desc::after{content:" \25BC";color:#58a6ff}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:#1f2733}
 tbody tr:last-child td{border-bottom:none}
-td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td.rank{color:#8b949e;font-weight:600}
 tr.top3 td.rank{color:#d29922;font-weight:800}
 td.name{font-weight:600}
 .pill{display:inline-block;background:#1c2330;border:1px solid #2b3442;color:#58a6ff;border-radius:999px;padding:2px 9px;font-size:12px;white-space:nowrap}
 td.implied{font-weight:700;color:#3fb950}
+td.up{color:#3fb950;font-weight:600}
+td.down{color:#f85149;font-weight:600}
 td.chains{color:#8b949e;font-size:13px}
 .empty{margin:24px 0;padding:28px;text-align:center;color:#8b949e;background:#161b22;border:1px dashed #2b3442;border-radius:10px}
 .method{margin-top:24px;background:#161b22;border:1px solid #2b3442;border-radius:10px;padding:16px 18px}
 .method h2{margin:0 0 6px;font-size:17px}
 .method p{margin:0;color:#8b949e;font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(1,4,9,.66);z-index:40}
-.detail{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:94vw;background:#161b22;border-left:1px solid #2b3442;z-index:50;overflow-y:auto;padding:22px 22px 32px}
+.detail{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:94vw;background:#161b22;border-left:1px solid #2b3442;z-index:50;overflow-y:auto;padding:22px 22px 32px}
 .detail .close{float:right;background:#1c2330;border:1px solid #2b3442;color:#e6edf3;border-radius:8px;width:32px;height:32px;font-size:16px;line-height:1;cursor:pointer}
 .detail .close:hover{border-color:#58a6ff;color:#58a6ff}
 .detail h2{margin:4px 0 2px;font-size:22px}
@@ -54,10 +56,14 @@ td.chains{color:#8b949e;font-size:13px}
 .farm li{margin-bottom:10px}
 .farm .cost{color:#8b949e;font-size:13px}
 .risk{color:#d29922;font-size:13px;border:1px solid #2b3442;border-radius:8px;padding:10px 12px;background:#1c2330}
+@media (max-width:900px){
+td.chains,th[data-key="chains"]{display:none}
+td:nth-child(8),th[data-key="ratioUsed"]{display:none}
+}
 @media (max-width:760px){
 .stats{grid-template-columns:repeat(2,1fr)}
 .filters{flex-wrap:wrap}
 .filters input{flex-basis:100%}
 .count{margin-left:0}
-td.chains,th[data-key="chains"]{display:none}
+td:nth-child(7),th[data-key="ageDays"]{display:none}
 }
