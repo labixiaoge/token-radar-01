@@ -9,12 +9,14 @@
 <body>
 <header class="wrap">
   <h1>Token Launch Radar — no token yet</h1>
-  <p class="lede">Every protocol below records no token yet. Its implied value is TVL
-  &times; the category&rsquo;s median market-cap/TVL &times; a 7-day growth factor
-  &times; an age factor — a rough yardstick for what a launch could be worth if
-  the protocol&rsquo;s record stayed as it is. The board covers all 40 watchlist
-  protocols at $50M+ plus the 160 largest pre-token protocols below the floor.
-  Click a row for its detail and a farming plan.</p>
+  <p class="lede">Every protocol below records no token yet and is a genuine launch
+  candidate — no centralised exchange, no bridge, no wrapped or staked
+  product, no versioned duplicate. Its implied value is TVL &times; the
+  category&rsquo;s median market-cap/TVL &times; a 7-day growth factor &times;
+  an age factor — a rough yardstick for what a launch could be worth if
+  the protocol&rsquo;s record stayed as it is. The board holds all 198
+  launch candidates in the sealed snapshot, including the 40 watchlist
+  protocols at $50M+. Click a row for its detail and a farming plan.</p>
   <div class="stats">
     <div class="stat"><span class="stat-label">Protocols ranked</span><span class="stat-value" id="stat-count">&mdash;</span></div>
     <div class="stat"><span class="stat-label">Board TVL</span><span class="stat-value" id="stat-tvl">&mdash;</span></div>
@@ -39,6 +41,9 @@
         <th data-key="category">Category</th>
         <th data-key="tvl">TVL</th>
         <th data-key="impliedValue">Implied value</th>
+        <th data-key="change7d">7-day</th>
+        <th data-key="ageDays">Age</th>
+        <th data-key="ratioUsed">Ratio</th>
         <th data-key="chains">Chains</th>
       </tr>
     </thead>
@@ -49,12 +54,16 @@
     <h2>How the value is estimated</h2>
     <p>Implied value = TVL &times; category ratio &times; growth factor &times; age
     factor. The category ratio is the median market-cap/TVL of the tokenized
-    protocols in that category — Dexs ~0.35, Lending ~0.13, Derivatives ~1.60 —
-    and a category with no median falls back to the global median 0.308. The
-    ratio used is clamped to [0.05, 2.0]: Prediction Market&rsquo;s raw 7.36 is
-    clamped to 2.0. Growth follows the 7-day TVL change, up to 1.5&times; and down
-    to 0.75&times;. Age: under 6 months 0.9&times;, over 2 years 1.1&times;.
-    Snapshot sealed 2026-11-14, 758 protocols at $5M+. A rough yardstick, not a
+    protocols in that category, read from this very snapshot — Dexs ~0.34,
+    Lending ~0.13, RWA ~0.27, Cross Chain Bridge ~1.22 — and a category
+    with fewer than three tokenized protocols falls back to the global
+    median 0.169. The ratio used is clamped to [0.05, 2.0]. Growth follows
+    the 7-day TVL change, up to 1.5&times; and down to 0.75&times;. Age:
+    under 6 months 0.9&times;, over 2 years 1.1&times;. The board ranks
+    only genuine launch candidates: it leaves out centralised exchanges,
+    bridges, wrapped and staked products and versioned duplicates, the
+    same rule the snapshot&rsquo;s watchlist uses. Snapshot sealed
+    2026-11-14, 758 protocols at $5M+. A rough yardstick, not a
     forecast — it says a protocol records no token, never that it has none.
     Never deposit more than you can lose.</p>
   </div>
