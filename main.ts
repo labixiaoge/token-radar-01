@@ -1,9 +1,9 @@
 // Token Launch Radar — main.ts
 //
 // Reads a sealed DefiLlama snapshot of DeFi protocols, finds the ones that
-// record no token yet, ranks them by an implied launch value built only from
-// the snapshot's own figures, and writes the board, the dashboard and the
-// dossier.
+// record no token yet and are genuine launch candidates, ranks them by an
+// implied launch value built only from the snapshot's own figures, and
+// writes the board, the dashboard and the dossier.
 //
 //   node main.ts --input <snapshot.json> --output <dir>
 //
@@ -12,10 +12,23 @@
 // --output $MAKEFUN_OUTPUT_DIR or ./out. Node 22+, standard library only.
 //
 // The value model: implied = TVL x category median mcap/TVL x growth x age.
-// The category medians live in category_ratios.json; a category with no
-// median falls back to the global median 0.308. The used ratio is clamped to
-// [0.05, 2.0], the growth factor to [0.75, 1.5], the age factor is 0.9 under
-// six months, 1.1 over two years, else 1.0.
+// The category medians live in category_ratios.json. Each median is the
+// median market-cap/TVL of the tokenized protocols in that category in this
+// very snapshot, computed over categories with at least three tokenized
+// protocols; a category with no median falls back to the global median
+// 0.1689 (the median over all 144 tokenized protocols in the snapshot).
+// The used ratio is clamped to [0.05, 2.0], the growth factor to
+// [0.75, 1.5], the age factor is 0.9 under six months, 1.1 over two years,
+// else 1.0.
+//
+// The board: every pre-token protocol that is a genuine launch candidate.
+// A launch candidate records no token (no mcap, no gecko id, no symbol)
+// and is not a wrapped, staked or bridged product, not a centralised
+// exchange, and not a versioned duplicate. That is the same rule the
+// snapshot's own watchlist uses, applied here to every pre-token protocol
+// instead of only the ones above the $50M floor — so the board holds the
+// whole set of candidates (198 rows), not an arbitrary top-N by TVL. The
+// watchlist's 40 protocols are all in it by construction.
 
 import { buildDossier } from "./vendor/makefun-board.ts";
 import {
@@ -32,10 +45,34 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
 const VERSION_MARKER = /\s(V\d+(\.\d+)?|v\d+(\.\d+)?|\d+\.\d+)$/;
-const GLOBAL_MEDIAN_RATIO = 0.308;
-const EARLY_LIMIT = 160;
+const WRAPPED_WORD = /\b(wrapped|staked|staking)\b/i;
+const GLOBAL_MEDIAN_RATIO = 0.1689;
 const SCREENSHOT_MAX_BYTES = 524288;
 const SCREENSHOT_NAME = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
+
+// Categories the watchlist rule keeps off the board: a centralised
+// exchange, a bridge, or a liquid-staking / restaking product is a
+// wrapped or staked product of a token that already trades, not a launch.
+const EXCLUDED_CATEGORIES = new Set([
+  "Bridge",
+  "Canonical Bridge",
+  "Liquid Staking",
+  "Liquid Restaking",
+  "Restaked BTC",
+  "CEX",
+]);
+
+// A name that begins with an exchange's name is that exchange's product.
+const EXCHANGE_PREFIXES = [
+  "Binance",
+  "Coinbase",
+  "Bybit",
+  "Kraken",
+  "Bitget",
+  "OKX",
+  "Bitfinex",
+  "Gemini",
+];
 
 type Protocol = {
   slug: string;
@@ -147,6 +184,7 @@ function ageFactor(ageDays: number | null): number {
   return 1.0;
 }
 
+
 // --- farm plan (dashboard/app.js mirrors these rules exactly) ---
 
 function capitalFor(tvlUsd: number): number {
@@ -169,48 +207,107 @@ function chainFor(chains: string[]): string {
   return chains && chains.length > 0 ? chains[0] : "its main chain";
 }
 
+function secondChainFor(chains: string[]): string | null {
+  return chains && chains.length > 1 ? chains[1] : null;
+}
+
+// The one action that differs by what the protocol does. Every branch
+// names the protocol, its chain and a concrete amount, so the plan reads
+// as written for this protocol rather than pasted for all of them.
 function actionFor(name: string, category: string | null, chain: string, capital: number): string {
   const c = (category ?? "").toLowerCase();
   if (c.includes("lend") || c.includes("cdp") || c.includes("collateral")) {
-    return `Lend $${capital} of USDC on ${name} on ${chain} and, if you want both sides of the market, borrow a small amount against it.`;
+    return `Lend $${capital} of USDC on ${name} on ${chain} and, if you want both sides of the market, borrow a small amount against it so the address shows as a borrower too.`;
   }
-  if (
-    c.includes("dex") ||
-    c.includes("yield") ||
-    c.includes("leveraged farm") ||
-    c.includes("liquidity manager") ||
-    c.includes("farm")
-  ) {
-    return `Put $${capital} into ${name}'s main pool on ${chain} as liquidity and leave the position open.`;
+  if (c.includes("dex") || c.includes("liquidity manager") || c.includes("leveraged farm") || c.includes("farm")) {
+    return `Put $${capital} into ${name}'s main pool on ${chain} as liquidity and leave the position open; if it offers a narrow range, keep the range tight around the current price.`;
   }
-  if (c.includes("bridge")) {
-    return `Bridge $${capital} of USDC to ${chain} through ${name}, then put the bridged funds to work inside its app.`;
+  if (c.includes("yield") && !c.includes("aggregator")) {
+    return `Deposit $${capital} into ${name}'s highest-yield vault on ${chain} and leave it compounding; do not chase a new vault every week.`;
+  }
+  if (c.includes("yield aggregator")) {
+    return `Deposit $${capital} into one vault on ${name} on ${chain} and hold the vault shares; a single steady vault reads better than hopping between many.`;
+  }
+  if (c.includes("bridge") || c.includes("cross chain")) {
+    return `Bridge $${capital} of USDC to ${chain} through ${name}, then put the bridged funds to work inside its app instead of bridging straight back.`;
   }
   if (c.includes("stak") || c.includes("restak")) {
-    return `Stake $${capital} through ${name} on ${chain} and hold whatever receipt token it gives you.`;
+    return `Stake $${capital} through ${name} on ${chain} and hold whatever receipt token it gives you; do not sell the receipt.`;
   }
   if (c.includes("perpetual") || c.includes("derivative") || c.includes("options")) {
-    return `Deposit $${capital} of USDC as margin on ${name} on ${chain} and open one small position at low leverage.`;
+    return `Deposit $${capital} of USDC as margin on ${name} on ${chain} and open one small position at low leverage, then close it after a few days rather than leaving it open for weeks.`;
   }
   if (c.includes("prediction")) {
-    return `Fund your account with $${capital} on ${name} and take a position in one live market.`;
+    return `Fund your account with $${capital} on ${name} and take a position in one live market with a clear end date, then let it settle.`;
   }
   if (c.includes("curator") || c.includes("allocator") || c.includes("basis trading")) {
-    return `Deposit $${capital} into a vault on ${name} on ${chain} and hold the vault shares.`;
+    return `Deposit $${capital} into a vault on ${name} on ${chain} and hold the vault shares; pick the vault whose strategy you understand, not the one with the highest headline yield.`;
   }
   if (c.includes("rwa")) {
-    return `Buy $${capital} of ${name}'s yield-bearing asset on ${chain} and hold it.`;
+    return `Buy $${capital} of ${name}'s yield-bearing asset on ${chain} and hold it; keep the purchase receipt and the asset in the same wallet.`;
   }
   if (c.includes("insurance")) {
-    return `Buy $${capital} of cover from ${name} on ${chain} and keep the policy active.`;
+    return `Buy $${capital} of cover from ${name} on ${chain} and keep the policy active through at least one renewal.`;
   }
-  if (c.includes("stable")) {
-    return `Mint $${capital} of the stable asset through ${name} on ${chain} and keep the vault well collateralised.`;
+  if (c.includes("stable") || c.includes("dual-token")) {
+    return `Mint $${capital} of the stable asset through ${name} on ${chain} and keep the vault well collateralised; do not let the ratio drift near liquidation.`;
   }
   if (c.includes("launchpad")) {
-    return `Join one launch on ${name} on ${chain} with $${capital} and complete its allowlist steps early.`;
+    return `Join one launch on ${name} on ${chain} with $${capital} and complete its allowlist steps early, before the launch window opens.`;
+  }
+  if (c.includes("indexes") || c.includes("index")) {
+    return `Buy $${capital} of ${name}'s index token on ${chain} and hold it; an index holding is one position, not many small ones.`;
+  }
+  if (c.includes("payments")) {
+    return `Send $${capital} through ${name} on ${chain} to a second wallet you control, then use the app once more the following week so the address shows repeat use.`;
+  }
+  if (c.includes("privacy")) {
+    return `Use ${name} on ${chain} once with $${capital} for a private transfer, then use it again the next week; a single use looks like a test.`;
+  }
+  if (c.includes("ai agent") || c.includes("decentralized ai") || c.includes("artificial")) {
+    return `Spend $${capital} on ${name}'s agent service on ${chain} and run one real task end to end, then run a second task the following week.`;
+  }
+  if (c.includes("nft")) {
+    return `Buy one item through ${name} on ${chain} for about $${capital} and hold it; do not flip it the same day.`;
+  }
+  if (c.includes("governance")) {
+    return `Lock $${capital} in ${name}'s governance on ${chain} and vote on one live proposal, then vote again when the next one opens.`;
+  }
+  if (c.includes("token locker") || c.includes("locker")) {
+    return `Lock $${capital} of tokens through ${name} on ${chain} for the longest term you are comfortable with and keep the lock receipt.`;
+  }
+  if (c.includes("chain")) {
+    return `Bridge $${capital} onto ${name}'s chain on ${chain} and use one native app there, so the address is active on the chain itself.`;
   }
   return `Deposit $${capital} of USDC into ${name} on ${chain} and use its main feature once to activate the position.`;
+}
+
+// A second, smaller action that fits the protocol's category, so the plan
+// is not one action plus five generic lines.
+function secondActionFor(name: string, category: string | null, chain: string, capital: number): string | null {
+  const c = (category ?? "").toLowerCase();
+  if (c.includes("lend") || c.includes("cdp")) {
+    return `After a week, borrow a small amount against the deposit on ${name} on ${chain} and repay it within a few days, so the address shows both sides of the market.`;
+  }
+  if (c.includes("dex") || c.includes("liquidity manager")) {
+    return `After a week, add a second, smaller liquidity position on ${name} on ${chain} in a different pool, so the address is not a one-pool user.`;
+  }
+  if (c.includes("yield") || c.includes("curator") || c.includes("allocator")) {
+    return `After a week, check the vault's yield on ${name} on ${chain} and, if it dropped sharply, move only half to another vault rather than exiting entirely.`;
+  }
+  if (c.includes("perpetual") || c.includes("derivative") || c.includes("options")) {
+    return `After a few days, close the first position on ${name} on ${chain} and open one more small position, so the address shows repeat trading rather than a single trade.`;
+  }
+  if (c.includes("bridge") || c.includes("cross chain")) {
+    return `A week later, bridge a smaller amount back through ${name} on ${chain} so the address shows two-way use instead of a single crossing.`;
+  }
+  if (c.includes("prediction")) {
+    return `When the first market settles on ${name}, take a position in a second live market with a smaller amount.`;
+  }
+  if (c.includes("rwa") || c.includes("stable")) {
+    return `After a month, add a smaller top-up to the same position on ${name} on ${chain} rather than opening a second one.`;
+  }
+  return null;
 }
 
 function withCostTime(text: string, cost: string, time: string): string {
@@ -230,7 +327,8 @@ function farmSteps(
   const hold = holdDaysFor(ageDays);
   const gas = gasFor(capital);
   const chain = chainFor(chains);
-  return [
+  const second = secondChainFor(chains);
+  const steps: string[] = [
     withCostTime(
       "Start with a wallet you use only for farming, funded with just the amount you plan to put to work, and keep its seed phrase offline.",
       "about $2 of gas for the first transaction",
@@ -241,6 +339,23 @@ function farmSteps(
       `$${capital} of capital plus roughly $${gas} of gas`,
       "20 minutes to set up",
     ),
+  ];
+  const extra = secondActionFor(name, category, chain, capital);
+  if (extra) {
+    steps.push(
+      withCostTime(extra, `about $${Math.max(5, Math.round(capital / 4))} of capital plus roughly $2 of gas`, "15 minutes"),
+    );
+  }
+  if (second) {
+    steps.push(
+      withCostTime(
+        `If ${name} also runs on ${second}, repeat the same deposit there with a smaller amount so the address is active on two chains, not one.`,
+        `about $${Math.max(10, Math.round(capital / 2))} of capital plus roughly $3 of gas`,
+        "15 minutes",
+      ),
+    );
+  }
+  steps.push(
     withCostTime(
       "Come back once a week and do one more real action — a swap, a deposit, a vote or a borrow — so the address looks active over time instead of used once.",
       "around $2 of gas per week",
@@ -261,13 +376,28 @@ function farmSteps(
       "nothing",
       "5 minutes",
     ),
-  ];
+  );
+  return steps;
 }
 
 // --- board ---
 
 function isPreToken(p: Protocol): boolean {
   return p.mcap_usd === null && p.gecko_id === null && p.symbol === null;
+}
+
+// A genuine launch candidate: records no token, and is not a wrapped,
+// staked or bridged product, not a centralised exchange, and not a
+// versioned duplicate. This is the snapshot's own watchlist rule, applied
+// to every pre-token protocol instead of only the ones above the floor.
+function isLaunchCandidate(p: Protocol): boolean {
+  if (p.category !== null && EXCLUDED_CATEGORIES.has(p.category)) return false;
+  if (VERSION_MARKER.test(p.name)) return false;
+  if (WRAPPED_WORD.test(p.name)) return false;
+  for (const prefix of EXCHANGE_PREFIXES) {
+    if (p.name.startsWith(prefix)) return false;
+  }
+  return true;
 }
 
 function validateBoard(rows: BoardRow[], watchlist: string[]): void {
@@ -384,24 +514,18 @@ function main(): void {
     };
   }
 
-  // The board: every watchlist protocol, plus the 160 largest pre-token
-  // protocols below the floor, skipping CEX and versioned names.
+  // The board: every pre-token protocol that is a genuine launch
+  // candidate. The watchlist's 40 are all in it by construction, and the
+  // rest are the other candidates below the floor — the whole set, not an
+  // arbitrary top-N by TVL.
   const chosen = new Map<string, Protocol>();
   for (const slug of watchlist) {
     const p = bySlug.get(slug);
     if (p) chosen.set(slug, p);
   }
-  const early = preToken
-    .filter(
-      (p) =>
-        p.tvl_usd < floorUsd &&
-        p.category !== "CEX" &&
-        !VERSION_MARKER.test(p.name) &&
-        !chosen.has(p.slug),
-    )
-    .sort((a, b) => b.tvl_usd - a.tvl_usd || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0))
-    .slice(0, EARLY_LIMIT);
-  for (const p of early) chosen.set(p.slug, p);
+  for (const p of preToken) {
+    if (isLaunchCandidate(p) && !chosen.has(p.slug)) chosen.set(p.slug, p);
+  }
 
   const rows = [...chosen.values()].map(rowFor);
   rows.sort(

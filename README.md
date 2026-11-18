@@ -15,13 +15,19 @@ https://make.fun/r/j11gmnzr
 
 ## What the radar does
 
-- Covers all **40 watchlist protocols** at $50M+ TVL that record no token,
-  plus the **160 largest pre-token protocols below the floor** — 200 rows.
+- Covers **all 198 launch candidates** in the snapshot: the **40 watchlist
+  protocols** at $50M+ TVL that record no token, plus the **158 other
+  pre-token protocols** that pass the same launch-candidate rule — the
+  whole set, not an arbitrary top-N by TVL. It leaves out centralised
+  exchanges, bridges, wrapped and staked products and versioned
+  duplicates, the same rule the snapshot's watchlist uses.
 - Ranks them by **implied launch value**, computed only from the snapshot's
   own figures (TVL, 7-day change, listing date, category). No hardcoded list
   of names: run it on a new snapshot and it finds new protocols by itself.
-- Gives every protocol a **6-step farming plan** built from its own category,
-  chains, TVL and age, with what each step costs and how long it takes.
+- Gives every protocol a **6–8 step farming plan** built from its own
+  category, chains, TVL and age, with what each step costs and how long it
+  takes — including a second category-specific action and a second-chain
+  repeat where the protocol supports it.
 - Ships a static dashboard (no network): sortable, filterable board, a
   detail view per protocol with the value maths and the farm plan, and deep
   links via `#category=`, `#chain=`, `#search=` and `#detail=`.
@@ -33,10 +39,11 @@ implied_value = TVL × category ratio × growth factor × age factor
 ```
 
 - **Category ratio** — the median market-cap/TVL of the tokenized protocols
-  in that category (see `category_ratios.json`: Dexs ~0.35, Lending ~0.13,
-  Derivatives ~1.60). A category with no median falls back to the global
-  median 0.308. The ratio used is clamped to [0.05, 2.0], so Prediction
-  Market's raw 7.36 counts as 2.0.
+  in that category, read from this very snapshot (see
+  `category_ratios.json`: Dexs ~0.34, Lending ~0.13, RWA ~0.27, Cross
+  Chain Bridge ~1.22, Bridge ~0.09). A category with fewer than three
+  tokenized protocols falls back to the global median 0.169. The ratio
+  used is clamped to [0.05, 2.0].
 - **Growth factor** — from the 7-day TVL change: `1 + clamp(change, -50, 100)
   / 200`, then clamped to [0.75, 1.5]. No change reported means 1.0.
 - **Age factor** — from the days since DefiLlama first listed the protocol:
@@ -57,7 +64,7 @@ node main.ts --input <snapshot.json> --output out
 - `--output` defaults to `$MAKEFUN_OUTPUT_DIR`, else `./out`.
 - Node 22+, standard library only — nothing to install.
 
-Outputs: `out/board.json` (the 200 ranked rows), `out/dashboard/` (the page
+Outputs: `out/board.json` (the 198 ranked rows), `out/dashboard/` (the page
 plus its data), `out/screenshots/` (the three screenshots), and
 `out/dossier.json` (written last, from `vendor/makefun-board.ts`).
 
